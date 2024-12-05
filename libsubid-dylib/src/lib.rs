@@ -44,7 +44,7 @@ pub unsafe extern "C" fn shadow_subid_has_range(
     start: libc::c_ulong,
     count: libc::c_ulong,
     id_type: SubidType,
-    result: *mut libc::boolean_t,
+    result: *mut libc::c_int,
 ) -> SubidStatus {
     let owner = unsafe { core::ffi::CStr::from_ptr(owner) };
     let Ok(owner) = owner.to_str() else {
