@@ -1,0 +1,13 @@
+[package]
+name = "libsubid-dylib"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+libsubid = { path = "../libsubid", features = ["mock"] }
+
+[features]
+mock = ["libsubid/mock"]
