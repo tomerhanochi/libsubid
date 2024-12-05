@@ -1,8 +1,8 @@
 use crate::{
     error::{Error, Result},
     kind::Kind,
-    range::{Id, IdRange},
-    SubidExtractor,
+    range::IdRange,
+    Id, SubidExtractor,
 };
 use std::collections::HashMap;
 
@@ -43,7 +43,7 @@ impl SubidExtractor for MockSubidExtractor {
                     None => Ok(false),
                     Some(owner_id_ranges) => Ok(owner_id_ranges
                         .iter()
-                        .any(|owner_id_range| owner_id_range.contains_range(id_range))),
+                        .any(|owner_id_range| owner_id_range.contains_id_range(id_range))),
                 }
             }
         }
@@ -56,7 +56,7 @@ impl SubidExtractor for MockSubidExtractor {
         };
         let mut owner_uids = Vec::new();
         for (id, id_ranges) in map.iter() {
-            if id_ranges.iter().any(|id_range| id_range.contains(subid)) {
+            if id_ranges.iter().any(|id_range| id_range.contains_id(subid)) {
                 owner_uids.push(*id);
             }
         }

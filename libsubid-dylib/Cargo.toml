@@ -1,6 +1,6 @@
 [package]
 name = "libsubid-dylib"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 
 [lib]
@@ -8,6 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 libsubid = { path = "../libsubid", features = ["mock"] }
+libc = "0.2"
 
 [features]
 mock = ["libsubid/mock"]
