@@ -1,18 +1,18 @@
-pub mod error;
-pub mod kind;
-pub mod range;
+#![cfg_attr(not(test), no_std)]
+#![forbid(unsafe_code)]
 
-#[cfg(feature = "mock")]
-pub mod mock;
+#[macro_use]
+extern crate alloc;
 
-pub type Id = u32;
+mod error;
+mod extractor;
+mod id;
+mod id_range;
 
-use error::Result;
-use kind::Kind;
-use range::IdRange;
-
-pub trait SubidExtractor {
-    fn has_range(&self, kind: &Kind, owner: &str, id_range: &IdRange) -> Result<bool>;
-    fn find_subid_owners(&self, kind: &Kind, id: &Id) -> Result<Box<[Id]>>;
-    fn list_owner_ranges(&self, kind: &Kind, owner: &str) -> Result<Box<[IdRange]>>;
-}
+pub use error::{Error, Result};
+pub use extractor::dynamic::DynamicSubidExtractor;
+pub use extractor::mock::MockSubidExtractor;
+pub use extractor::noop::NoopSubidExtractor;
+pub use extractor::SubidExtractor;
+pub use id::Id;
+pub use id_range::IdRange;

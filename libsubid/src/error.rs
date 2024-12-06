@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
     UnknownUser,
     Connection,
@@ -17,4 +17,4 @@ impl core::fmt::Display for Error {
 
 impl core::error::Error for Error {}
 
-pub(crate) type Result<T> = core::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Error>;

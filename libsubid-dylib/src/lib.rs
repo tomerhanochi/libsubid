@@ -1,197 +1,120 @@
-use std::{collections::HashMap, sync::LazyLock};
+#![cfg_attr(not(test), no_std)]
 
-use libsubid::{self, kind::Kind, mock::MockSubidExtractor, range::IdRange, Id, SubidExtractor};
+#[macro_use]
+extern crate alloc;
 
-static MOCK_SUBID_EXTRACTOR: LazyLock<MockSubidExtractor> = LazyLock::new(|| {
-    let user_ids = {
-        let mut map = HashMap::new();
-        map.insert("mock", 1000);
-        map
-    };
-    let subuid_map = {
-        let mut map = HashMap::new();
-        map.insert(
-            1000,
-            vec![IdRange {
-                start: 524288,
-                count: 65536,
-            }]
-            .into_boxed_slice(),
-        );
-        map
-    };
-    let subgid_map = subuid_map.clone();
-    libsubid::mock::MockSubidExtractor::new(user_ids, subuid_map, subgid_map)
-});
+mod extractor;
+mod id_range;
+mod id_type;
+mod status_code;
 
-pub type SubidType = libc::c_uint;
-pub const SUBID_TYPE_UID: SubidType = 1;
-pub const SUBID_TYPE_GID: SubidType = 2;
+use alloc::{boxed::Box, vec::Vec};
+use extractor::subid_extractor;
+use id_range::IdRange;
+use id_type::IdType;
+use status_code::StatusCode;
 
-pub type SubidStatus = libc::c_uint;
-pub const SUBID_STATUS_SUCCESS: SubidStatus = 0;
-pub const SUBID_STATUS_UNKNOWN_USER: SubidStatus = 1;
-pub const SUBID_STATUS_ERROR_CONN: SubidStatus = 2;
-pub const SUBID_STATUS_ERROR: SubidStatus = 3;
+unsafe fn uid_from_name(owner: *const ::libc::c_char) -> Option<::libc::uid_t> {
+    let owner_passwd = libc::getpwnam(owner);
+    if owner_passwd.is_null() {
+        return None;
+    }
+    Some((*owner_passwd).pw_uid)
+}
 
-#[no_mangle]
 /**
  * # Safety
- * # TODO
  */
 pub unsafe extern "C" fn shadow_subid_has_range(
-    owner: *const libc::c_char,
-    start: libc::c_ulong,
-    count: libc::c_ulong,
-    id_type: SubidType,
-    result: *mut libc::c_int,
-) -> SubidStatus {
-    let owner = unsafe { core::ffi::CStr::from_ptr(owner) };
-    let Ok(owner) = owner.to_str() else {
-        unsafe {
-            *result = 0;
-        }
-        return SUBID_STATUS_ERROR;
+    owner_ptr: *const ::libc::c_char,
+    start: ::libc::c_ulong,
+    count: ::libc::c_ulong,
+    subid_type: IdType,
+    has_range_ptr: *mut bool,
+) -> StatusCode {
+    let owner_uid = match uid_from_name(owner_ptr) {
+        Some(val) => val,
+        None => return StatusCode::UnknownUser,
     };
-    let kind = match id_type {
-        SUBID_TYPE_UID => Kind::Uid,
-        SUBID_TYPE_GID => Kind::Gid,
-        _ => {
-            unsafe {
-                *result = 0;
-            }
-            return SUBID_STATUS_ERROR;
-        }
+    let start = match start.try_into() {
+        Ok(val) => val,
+        Err(_) => return StatusCode::Error,
     };
-    match MOCK_SUBID_EXTRACTOR.has_range(
-        &kind,
-        owner,
-        &IdRange {
-            start: start as Id,
-            count: count as Id,
-        },
-    ) {
-        Ok(res) => {
-            unsafe {
-                *result = match res {
-                    true => 1,
-                    false => 0,
-                };
-            }
-            SUBID_STATUS_SUCCESS
+    let count = match count.try_into() {
+        Ok(val) => val,
+        Err(_) => return StatusCode::Error,
+    };
+    let id_range = ::libsubid::IdRange::new(start, count);
+
+    match subid_extractor(subid_type).has_range(&owner_uid, &id_range) {
+        Ok(has_range) => {
+            *has_range_ptr = has_range;
+            StatusCode::Success
         }
-        Err(err) => {
-            unsafe {
-                *result = 0;
-            }
-            match err {
-                libsubid::error::Error::General => SUBID_STATUS_ERROR,
-                libsubid::error::Error::Connection => SUBID_STATUS_ERROR_CONN,
-                libsubid::error::Error::UnknownUser => SUBID_STATUS_UNKNOWN_USER,
-            }
-        }
+        Err(err) => err.into(),
     }
 }
 
-#[no_mangle]
 /**
  * # Safety
  */
 pub unsafe extern "C" fn shadow_subid_find_subid_owners(
-    id: libc::c_ulong,
-    id_type: SubidType,
-    uids: *mut *const libc::uid_t,
-    count: *mut libc::c_int,
-) -> SubidStatus {
-    let kind = match id_type {
-        SUBID_TYPE_UID => Kind::Uid,
-        SUBID_TYPE_GID => Kind::Gid,
-        _ => {
-            return SUBID_STATUS_ERROR;
-        }
+    subid: ::libc::c_ulong,
+    subid_type: IdType,
+    owner_uids_ptr: *mut *const ::libc::uid_t,
+    length_ptr: *mut ::libc::c_int,
+) -> StatusCode {
+    let subid = match subid.try_into() {
+        Ok(val) => val,
+        Err(_) => return StatusCode::Error,
     };
-    match MOCK_SUBID_EXTRACTOR.find_subid_owners(&kind, &(id as Id)) {
-        Ok(owner_ids) => {
-            let owner_ids = owner_ids
-                .iter()
-                .map(|owner_id| (*owner_id as libc::uid_t))
-                .collect::<Vec<_>>();
-            unsafe {
-                *uids = owner_ids.as_ptr();
-                *count = owner_ids.len() as libc::c_int;
+    match subid_extractor(subid_type).find_subid_owners(&subid) {
+        Ok(subid_owners) => {
+            let length = subid_owners.len();
+            let mut owner_uids: Vec<::libc::uid_t> = Vec::with_capacity(length);
+            for subid_owner in subid_owners {
+                owner_uids.push(subid_owner);
             }
-            SUBID_STATUS_SUCCESS
+            *owner_uids_ptr = Box::leak(owner_uids.into_boxed_slice()).as_ptr();
+            *length_ptr = length as ::libc::c_int;
+            StatusCode::Success
         }
-        Err(err) => match err {
-            libsubid::error::Error::General => SUBID_STATUS_ERROR,
-            libsubid::error::Error::Connection => SUBID_STATUS_ERROR_CONN,
-            libsubid::error::Error::UnknownUser => SUBID_STATUS_UNKNOWN_USER,
-        },
+        Err(err) => err.into(),
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[repr(C)]
-pub struct SubidRange {
-    start: libc::c_ulong,
-    count: libc::c_ulong,
-}
-
-#[no_mangle]
 /**
  * # Safety
  */
 pub unsafe extern "C" fn shadow_subid_list_owner_ranges(
-    owner: *const libc::c_char,
-    id_type: SubidType,
-    in_ranges: *mut *const SubidRange,
-    count: *mut libc::c_int,
-) -> SubidStatus {
-    unsafe {
-        *count = 0;
-    }
-    let owner = unsafe { core::ffi::CStr::from_ptr(owner) };
-    let Ok(owner) = owner.to_str() else {
-        return SUBID_STATUS_ERROR;
+    owner_ptr: *const ::libc::c_char,
+    id_type: IdType,
+    owner_subid_ranges_ptr: *mut *const IdRange,
+    length_ptr: *mut ::libc::c_int,
+) -> StatusCode {
+    let owner_uid = match uid_from_name(owner_ptr) {
+        Some(val) => val,
+        None => return StatusCode::UnknownUser,
     };
-    let kind = match id_type {
-        SUBID_TYPE_UID => Kind::Uid,
-        SUBID_TYPE_GID => Kind::Gid,
-        _ => {
-            return SUBID_STATUS_ERROR;
-        }
-    };
-    match MOCK_SUBID_EXTRACTOR.list_owner_ranges(&kind, owner) {
-        Ok(id_ranges) => {
-            let id_ranges = id_ranges
-                .iter()
-                .map(|id_range| SubidRange {
-                    start: id_range.start as libc::c_ulong,
-                    count: id_range.count as libc::c_ulong,
-                })
-                .collect::<Vec<_>>()
-                .into_boxed_slice();
-            let length = id_ranges.len();
-            let ptr = Box::leak(id_ranges);
-            let arr = ptr.as_ptr();
-            unsafe {
-                *in_ranges = arr;
-                *count = length as i32;
+
+    match subid_extractor(id_type).list_owner_ranges(&owner_uid) {
+        Ok(owner_ranges) => {
+            let length = owner_ranges.len();
+            let mut owner_subid_ranges: Vec<IdRange> = Vec::with_capacity(length);
+            for owner_range in owner_ranges {
+                owner_subid_ranges.push(owner_range.into());
             }
-            SUBID_STATUS_SUCCESS
+            *owner_subid_ranges_ptr = Box::leak(owner_subid_ranges.into_boxed_slice()).as_ptr();
+            *length_ptr = length as ::libc::c_int;
+            StatusCode::Success
         }
-        Err(err) => match err {
-            libsubid::error::Error::General => SUBID_STATUS_ERROR,
-            libsubid::error::Error::Connection => SUBID_STATUS_ERROR_CONN,
-            libsubid::error::Error::UnknownUser => SUBID_STATUS_UNKNOWN_USER,
-        },
+        Err(err) => err.into(),
     }
 }
 
-#[no_mangle]
 /**
  * # Safety
  */
-pub unsafe extern "C" fn shadow_subid_free(ptr: *mut libc::c_void) {
-    println!("{:?}", ptr);
+pub unsafe extern "C" fn shadow_subid_free(ptr: *mut ::libc::c_void) {
+    libc::free(ptr);
 }
