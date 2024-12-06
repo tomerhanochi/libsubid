@@ -130,6 +130,7 @@ pub unsafe extern "C" fn shadow_subid_find_subid_owners(
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[repr(C)]
 pub struct SubidRange {
     start: libc::c_ulong,
@@ -168,10 +169,14 @@ pub unsafe extern "C" fn shadow_subid_list_owner_ranges(
                     start: id_range.start as libc::c_ulong,
                     count: id_range.count as libc::c_ulong,
                 })
-                .collect::<Vec<_>>();
+                .collect::<Vec<_>>()
+                .into_boxed_slice();
+            let length = id_ranges.len();
+            let ptr = Box::leak(id_ranges);
+            let arr = ptr.as_ptr();
             unsafe {
-                *in_ranges = id_ranges.as_ptr();
-                *count = id_ranges.len() as i32;
+                *in_ranges = arr;
+                *count = length as i32;
             }
             SUBID_STATUS_SUCCESS
         }
@@ -181,4 +186,12 @@ pub unsafe extern "C" fn shadow_subid_list_owner_ranges(
             libsubid::error::Error::UnknownUser => SUBID_STATUS_UNKNOWN_USER,
         },
     }
+}
+
+#[no_mangle]
+/**
+ * # Safety
+ */
+pub unsafe extern "C" fn shadow_subid_free(ptr: *mut libc::c_void) {
+    println!("{:?}", ptr);
 }
