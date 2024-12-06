@@ -1,5 +1,3 @@
-#![cfg_attr(not(test), no_std)]
-
 #[macro_use]
 extern crate alloc;
 
@@ -25,6 +23,7 @@ unsafe fn uid_from_name(owner: *const ::libc::c_char) -> Option<::libc::uid_t> {
 /**
  * # Safety
  */
+#[no_mangle]
 pub unsafe extern "C" fn shadow_subid_has_range(
     owner_ptr: *const ::libc::c_char,
     start: ::libc::c_ulong,
@@ -58,6 +57,7 @@ pub unsafe extern "C" fn shadow_subid_has_range(
 /**
  * # Safety
  */
+#[no_mangle]
 pub unsafe extern "C" fn shadow_subid_find_subid_owners(
     subid: ::libc::c_ulong,
     subid_type: IdType,
@@ -86,6 +86,7 @@ pub unsafe extern "C" fn shadow_subid_find_subid_owners(
 /**
  * # Safety
  */
+#[no_mangle]
 pub unsafe extern "C" fn shadow_subid_list_owner_ranges(
     owner_ptr: *const ::libc::c_char,
     id_type: IdType,
@@ -115,6 +116,7 @@ pub unsafe extern "C" fn shadow_subid_list_owner_ranges(
 /**
  * # Safety
  */
+#[no_mangle]
 pub unsafe extern "C" fn shadow_subid_free(ptr: *mut ::libc::c_void) {
     libc::free(ptr);
 }
