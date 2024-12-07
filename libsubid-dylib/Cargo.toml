@@ -1,7 +1,13 @@
 [package]
 name = "libsubid-dylib"
-version = "0.0.6"
-edition = "2021"
+description = "Shadow compatible nsswitch module for sub?id extraction from various sources."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [lib]
 crate-type = ["cdylib"]

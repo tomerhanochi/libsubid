@@ -1,9 +1,13 @@
 [package]
 name = "libsubid"
-version = "0.0.6"
-edition = "2021"
+description = "Implementations of sub?id extractors from various sources."
 
-[dependencies]
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [features]
 mock = []

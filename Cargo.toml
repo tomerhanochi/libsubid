@@ -4,3 +4,11 @@ members = [
     "libsubid",
     "libsubid-dylib",
 ]
+
+[workspace.package]
+authors = ["Tomer Hanochi <contact@tomerhanochi.com>"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/tomerhanochi/libsubid"
+rust-version = "1.83"
+version = "0.1.3"
