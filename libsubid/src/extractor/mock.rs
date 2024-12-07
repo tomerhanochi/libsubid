@@ -12,7 +12,7 @@ impl MockSubidExtractor {
 
 impl Default for MockSubidExtractor {
     fn default() -> Self {
-        Self::new(BTreeMap::new())
+        Self::new(BTreeMap::default())
     }
 }
 
