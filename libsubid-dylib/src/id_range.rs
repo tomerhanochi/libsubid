@@ -16,12 +16,12 @@ impl From<::libsubid::IdRange> for IdRange {
         };
         let end = match value.end_bound() {
             Bound::Included(end) => *end,
-            Bound::Excluded(end) => *end + 1,
+            Bound::Excluded(end) => *end - 1,
             Bound::Unbounded => unreachable!(),
         };
         Self {
             start: start as ::libc::c_ulong,
-            count: (end - start) as ::libc::c_ulong,
+            count: (end - start + 1) as ::libc::c_ulong,
         }
     }
 }
