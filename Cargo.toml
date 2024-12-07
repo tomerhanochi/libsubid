@@ -6,9 +6,9 @@ members = [
 ]
 
 [workspace.package]
-authors = ["Tomer Hanochi <contact@tomerhanochi.com>"]
+authors = ["Tomer Hanochi <crates.io@tomerhanochi.com>"]
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/tomerhanochi/libsubid"
 rust-version = "1.83"
-version = "0.1.4"
+version = "0.1.5"
