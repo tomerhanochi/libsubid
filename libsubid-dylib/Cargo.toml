@@ -13,7 +13,7 @@ version.workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
-libsubid = { path = "../libsubid" }
+libsubid = { path = "../libsubid", version = "0.1.4" }
 libc = "0.2"
 
 [features]
