@@ -1,6 +1,7 @@
 use crate::{Result, SubidExtractor};
 use alloc::boxed::Box;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NoopSubidExtractor();
 
 impl NoopSubidExtractor {

@@ -1,33 +1,57 @@
 use crate::{Id, IdRange, Result, SubidExtractor};
 use alloc::boxed::Box;
 
-const ID_RANGE_SIZE: u32 = 65536;
-const SUBID_START: u32 = u32::MAX / ID_RANGE_SIZE;
+pub const CONTAINER_ID_RANGE: IdRange = IdRange::new(524_288, 1_878_982_656);
+pub const SUBID_ALLOCATION_SIZE: Id = 65536;
 
-pub struct DynamicSubidExtractor();
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DynamicSubidExtractor {
+    owner_id_range: IdRange,
+}
 
-impl DynamicSubidExtractor {
-    pub fn new() -> Self {
-        Self()
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NewDynamicSubidExtractorError {
+    TooManyOwnerIds,
+}
+
+impl core::fmt::Display for NewDynamicSubidExtractorError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match *self {
+            Self::TooManyOwnerIds => write!(f, ""),
+        }
     }
 }
 
-impl Default for DynamicSubidExtractor {
-    fn default() -> Self {
-        Self::new()
+impl core::error::Error for NewDynamicSubidExtractorError {}
+
+impl DynamicSubidExtractor {
+    pub fn try_new(
+        owner_id_range: IdRange,
+    ) -> core::result::Result<Self, NewDynamicSubidExtractorError> {
+        if owner_id_range.len() > (CONTAINER_ID_RANGE.len() / (SUBID_ALLOCATION_SIZE as usize)) {
+            return Err(NewDynamicSubidExtractorError::TooManyOwnerIds);
+        }
+        Ok(Self { owner_id_range })
     }
 }
 
 impl SubidExtractor for DynamicSubidExtractor {
-    fn find_subid_owners(&self, subid: &Id) -> Result<alloc::boxed::Box<[Id]>> {
-        Ok(vec![subid / ID_RANGE_SIZE].into_boxed_slice())
+    fn find_subid_owners(&self, subid: &Id) -> Result<Box<[Id]>> {
+        Ok(vec![
+            (*subid - CONTAINER_ID_RANGE.start) / SUBID_ALLOCATION_SIZE + self.owner_id_range.start,
+        ]
+        .into_boxed_slice())
     }
 
-    fn list_owner_ranges(&self, id: &Id) -> Result<alloc::boxed::Box<[IdRange]>> {
-        if (SUBID_START..).contains(id) {
-            return Ok(Box::new([]));
+    fn list_owner_ranges(&self, id: &Id) -> Result<Box<[IdRange]>> {
+        if !self.owner_id_range.contains(id) {
+            return Ok(vec![].into_boxed_slice());
         }
-        Ok(vec![IdRange::new(id * ID_RANGE_SIZE, ID_RANGE_SIZE)].into_boxed_slice())
+        Ok(vec![IdRange::from_count(
+            (id - self.owner_id_range.start) * SUBID_ALLOCATION_SIZE + CONTAINER_ID_RANGE.start,
+            SUBID_ALLOCATION_SIZE,
+        )]
+        .into_boxed_slice())
     }
 }
 
@@ -35,7 +59,7 @@ impl SubidExtractor for DynamicSubidExtractor {
 mod tests {
     use super::*;
     fn extractor() -> DynamicSubidExtractor {
-        DynamicSubidExtractor::new()
+        DynamicSubidExtractor::try_new((1000..1001).into()).unwrap()
     }
 
     #[test]
@@ -52,35 +76,60 @@ mod tests {
             TestCase {
                 input: TestCaseInput {
                     owner: 1000,
-                    subid_range: IdRange::new(1000 * ID_RANGE_SIZE, ID_RANGE_SIZE),
+                    subid_range: IdRange::from_count(
+                        CONTAINER_ID_RANGE.start,
+                        SUBID_ALLOCATION_SIZE,
+                    ),
                 },
                 output: Ok(true),
             },
             TestCase {
                 input: TestCaseInput {
                     owner: 1000,
-                    subid_range: IdRange::new(1000 * ID_RANGE_SIZE + 1, 65536 - 1),
+                    subid_range: IdRange::from_count(
+                        CONTAINER_ID_RANGE.start + 1,
+                        SUBID_ALLOCATION_SIZE - 1,
+                    ),
                 },
                 output: Ok(true),
             },
             TestCase {
                 input: TestCaseInput {
                     owner: 1000,
-                    subid_range: IdRange::new(1000 * ID_RANGE_SIZE + 1, 65536),
+                    subid_range: IdRange::from_count(
+                        CONTAINER_ID_RANGE.start + 1,
+                        SUBID_ALLOCATION_SIZE,
+                    ),
                 },
                 output: Ok(false),
             },
             TestCase {
                 input: TestCaseInput {
                     owner: 1000,
-                    subid_range: IdRange::new(1000 * ID_RANGE_SIZE - 1, 65536),
+                    subid_range: IdRange::from_count(
+                        CONTAINER_ID_RANGE.start - 1,
+                        SUBID_ALLOCATION_SIZE,
+                    ),
                 },
                 output: Ok(false),
             },
             TestCase {
                 input: TestCaseInput {
                     owner: 999,
-                    subid_range: IdRange::new(1000 * ID_RANGE_SIZE - 1, 65536),
+                    subid_range: IdRange::from_count(
+                        CONTAINER_ID_RANGE.start,
+                        SUBID_ALLOCATION_SIZE,
+                    ),
+                },
+                output: Ok(false),
+            },
+            TestCase {
+                input: TestCaseInput {
+                    owner: 1001,
+                    subid_range: IdRange::from_count(
+                        CONTAINER_ID_RANGE.start,
+                        SUBID_ALLOCATION_SIZE,
+                    ),
                 },
                 output: Ok(false),
             },

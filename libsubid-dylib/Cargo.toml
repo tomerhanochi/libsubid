@@ -13,11 +13,13 @@ version.workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
-libsubid = { path = "../libsubid", version = "0.1.5" }
+libsubid = { path = "../libsubid", features = ["noop"] }
 libc = "0.2"
 
 [features]
-mock-subuid = []
-mock-subgid = []
-dynamic-subuid = []
-dynamic-subgid = []
+subuid-mock = ["libsubid/mock"]
+subuid-dynamic = ["libsubid/dynamic"]
+subuid-dynamic-systemd = ["libsubid/dynamic"]
+subgid-mock = ["libsubid/mock"]
+subgid-dynamic = ["libsubid/dynamic"]
+subgid-dynamic-systemd = ["libsubid/dynamic"]

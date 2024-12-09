@@ -1,5 +1,8 @@
+#[cfg(feature = "dynamic")]
 pub mod dynamic;
+#[cfg(feature = "mock")]
 pub mod mock;
+#[cfg(feature = "noop")]
 pub mod noop;
 
 use crate::{Id, IdRange, Result};

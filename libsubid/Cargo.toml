@@ -12,3 +12,4 @@ version.workspace = true
 [features]
 mock = []
 dynamic = []
+noop = []

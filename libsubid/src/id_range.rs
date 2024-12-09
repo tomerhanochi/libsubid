@@ -1,12 +1,16 @@
 use crate::Id;
-use core::ops::{Bound, RangeBounds};
+use core::ops::{Bound, Deref, Range, RangeBounds};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct IdRange(core::ops::Range<Id>);
+pub struct IdRange(Range<Id>);
 
 impl IdRange {
-    pub fn new(start: Id, count: Id) -> Self {
-        Self(start..start + count)
+    pub const fn new(start: Id, end: Id) -> Self {
+        Self(start..end)
+    }
+
+    pub const fn from_count(start: Id, count: Id) -> Self {
+        Self::new(start, start + count)
     }
 
     pub(crate) fn contains_id_range(&self, other: &Self) -> bool {
@@ -22,11 +26,29 @@ impl IdRange {
     }
 }
 
-impl RangeBounds<Id> for IdRange {
-    fn start_bound(&self) -> Bound<&Id> {
-        self.0.start_bound()
+impl Deref for IdRange {
+    type Target = Range<Id>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
-    fn end_bound(&self) -> Bound<&Id> {
-        self.0.end_bound()
+}
+
+impl<T> From<T> for IdRange
+where
+    T: RangeBounds<Id>,
+{
+    fn from(value: T) -> Self {
+        let start = match value.start_bound() {
+            core::ops::Bound::Included(start) => *start,
+            core::ops::Bound::Excluded(start) => start + 1,
+            core::ops::Bound::Unbounded => 0,
+        };
+        let end = match value.end_bound() {
+            core::ops::Bound::Included(end) => *end,
+            core::ops::Bound::Excluded(end) => end - 1,
+            core::ops::Bound::Unbounded => Id::MAX,
+        };
+        Self::new(start, end + 1)
     }
 }

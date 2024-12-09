@@ -1,7 +1,7 @@
 use crate::{Id, IdRange, Result, SubidExtractor};
 use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
-use core::ops::RangeBounds;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MockSubidExtractor(BTreeMap<Id, Box<[IdRange]>>);
 
 impl MockSubidExtractor {
@@ -42,7 +42,10 @@ mod tests {
     use super::*;
     fn extractor() -> MockSubidExtractor {
         let mut map = BTreeMap::new();
-        map.insert(1000, vec![IdRange::new(524288, 65536)].into_boxed_slice());
+        map.insert(
+            1000,
+            vec![IdRange::from_count(524288, 65536)].into_boxed_slice(),
+        );
         MockSubidExtractor::new(map)
     }
 
@@ -60,35 +63,35 @@ mod tests {
             TestCase {
                 input: TestCaseInput {
                     owner: 1000,
-                    subid_range: IdRange::new(524288, 65536),
+                    subid_range: IdRange::from_count(524288, 65536),
                 },
                 output: Ok(true),
             },
             TestCase {
                 input: TestCaseInput {
                     owner: 1000,
-                    subid_range: IdRange::new(524288 + 1, 65536 - 1),
+                    subid_range: IdRange::from_count(524288 + 1, 65536 - 1),
                 },
                 output: Ok(true),
             },
             TestCase {
                 input: TestCaseInput {
                     owner: 1000,
-                    subid_range: IdRange::new(524288 + 1, 65536),
+                    subid_range: IdRange::from_count(524288 + 1, 65536),
                 },
                 output: Ok(false),
             },
             TestCase {
                 input: TestCaseInput {
                     owner: 1000,
-                    subid_range: IdRange::new(524288 - 1, 65536),
+                    subid_range: IdRange::from_count(524288 - 1, 65536),
                 },
                 output: Ok(false),
             },
             TestCase {
                 input: TestCaseInput {
                     owner: 999,
-                    subid_range: IdRange::new(524288 - 1, 65536),
+                    subid_range: IdRange::from_count(524288 - 1, 65536),
                 },
                 output: Ok(false),
             },
