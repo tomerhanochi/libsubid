@@ -43,7 +43,7 @@ pub unsafe extern "C" fn shadow_subid_has_range(
         Ok(val) => val,
         Err(_) => return StatusCode::Error,
     };
-    let id_range = ::libsubid::IdRange::new(start, count);
+    let id_range = ::libsubid::IdRange::from_count(start, count);
 
     match subid_extractor(subid_type).has_range(&owner_uid, &id_range) {
         Ok(has_range) => {
